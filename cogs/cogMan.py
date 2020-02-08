@@ -23,7 +23,8 @@ class cogMan(commands.Cog):
 			await ctx.send(f'{cog} Reloaded')
 		except Exception as e:
 			await ctx.send("""**Traceback:**\n```{0}```\n""".format(' '.join(traceback.format_exception(None, e, e.__traceback__))))
-
+		print("----------------------------------------------------------")
+		print("----------------------------------------------------------")
 	
 	@commands.command()
 	@dev()
