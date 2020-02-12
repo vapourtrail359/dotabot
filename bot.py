@@ -6,7 +6,7 @@ with open('creds.json','r') as f:
     creds = json.load(f)
     token = creds["token"]
 
-bot = commands.AutoShardedBot(command_prefix='?', formatter=None, description=None, pm_help=False,max_messages=50000)
+bot = commands.AutoShardedBot(command_prefix='!', formatter=None, description=None, pm_help=False,max_messages=50000)
 
 @bot.event
 async def on_ready():

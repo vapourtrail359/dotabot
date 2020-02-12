@@ -17,7 +17,7 @@ class Main(commands.Cog):
 		self.kick_dict = defaultdict(lambda: set([]))
 		self.kick_threshold = 7
 		self.owner = None
-		self.channelid = 675421307852292127
+		self.channelid = 677266311008616489
 		self.do_not_delete = []
 		self.queue_post = None
 		self.accepted_message = None
