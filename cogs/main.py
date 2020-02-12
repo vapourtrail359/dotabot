@@ -38,7 +38,7 @@ class Main(commands.Cog):
     async def on_message(self, message):
         if message.channel == message.guild.get_channel(self.channelid):
             await asyncio.sleep(5)
-            if message.id not in self.do_not_delete:
+            if message.id not in self.do_not_delete and not message.pinned:
                 try:
                     await message.delete()
                 except:
@@ -134,7 +134,7 @@ class Main(commands.Cog):
         self.queue_post = None
         self.do_not_delete = []
         c = ctx.guild.get_channel(self.channelid)
-        await c.purge()
+        await c.purge(check=lambda x: not x.pinned)
 
     async def wait_for_accepts(self, ctx):
         await asyncio.sleep(60)
