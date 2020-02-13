@@ -296,7 +296,7 @@ class Main(commands.Cog):
 
     async def find_new_host(self, ctx):
         self.owner = None
-        await self.status_message.edit(content="The queue is now owner-less! it will be auto deleted unless a Host "
+        await self.status_message.edit(content="The queue is now owner-less! it will be auto deleted unless someone "
                                                "uses the !takeover command "
                                                "in the next 2 minutes")
         await asyncio.sleep(2 * 60)
