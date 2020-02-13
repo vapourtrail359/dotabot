@@ -10,7 +10,7 @@ from utils.checks import dev
 def on_queue_channel():
     def predicate(ctx):
         try:
-            return ctx.channel.id == 677266311008616489
+            return ctx.channel.id == 675421307852292127
         except:
             pass
     return commands.check(predicate)
@@ -26,7 +26,7 @@ class Main(commands.Cog):
         self.kick_dict = defaultdict(lambda: set([]))
         self.kick_threshold = 7
         self.owner = None
-        self.channelid = 677266311008616489
+        self.channelid = 675421307852292127
         self.do_not_delete = []
         self.queue_post = None
         self.accepted_message = None
@@ -83,26 +83,26 @@ class Main(commands.Cog):
     @on_queue_channel()
     @commands.command()
     async def create(self, ctx, *, password: str = "default"):
-        if "Host" in [r.name for r in ctx.author.roles]:
-            if self.queue is None:
-                await self.reset(ctx)
-                self.closed = False
-                self.owner = ctx.author
-                self.queue.append(ctx.author.id)
-                channel = ctx.guild.get_channel(self.channelid)
-                pre_queue_post = await channel.send("Game's password is: " + password)
-                self.do_not_delete.append(pre_queue_post.id)
-                self.queue_post = await channel.send("Loading...")
-                self.queue_post = self.queue_post.id
-                self.do_not_delete.append(self.queue_post)
-                await self.call_to_join(ctx)
-                self.do_not_delete.append(self.status_message.id)
-                await self.update_queue_post(ctx)
+        # if "Host" in [r.name for r in ctx.author.roles]:
+        if self.queue is None:
+            await self.reset(ctx)
+            self.closed = False
+            self.owner = ctx.author
+            self.queue.append(ctx.author.id)
+            channel = ctx.guild.get_channel(self.channelid)
+            pre_queue_post = await channel.send("Game's password is: " + password)
+            self.do_not_delete.append(pre_queue_post.id)
+            self.queue_post = await channel.send("Loading...")
+            self.queue_post = self.queue_post.id
+            self.do_not_delete.append(self.queue_post)
+            await self.call_to_join(ctx)
+            self.do_not_delete.append(self.status_message.id)
+            await self.update_queue_post(ctx)
 
-            else:
-                await ctx.send("Queue already exists!")
         else:
-            await ctx.send("Only hosts can do this!")
+            await ctx.send("Queue already exists!")
+        # else:
+        #     await ctx.send("Only hosts can do this!")
 
     async def call_to_join(self, ctx):
         txt = "Queue is now open, waiting for more players to join!"
@@ -277,22 +277,22 @@ class Main(commands.Cog):
     @on_queue_channel()
     @commands.command()
     async def takeover(self, ctx):
-        if "Host" in [r.name for r in ctx.author.roles]:
-            if self.owner is None:
-                self.owner = ctx.author
-                if ctx.author.id not in self.queue:
-                    self.queue.insert(0, ctx.author.id)
-                await  ctx.send(f"{ctx.author.display_name} is the new queue owner!")
-                if len(self.queue) == 10:
-                    self.accepted = []
-                    await self.call_to_accept(ctx)
-                else:
-                    await self.re_open_queue_if_necessary(ctx)
-                await self.update_queue_post(ctx)
+        # if "Host" in [r.name for r in ctx.author.roles]:
+        if self.owner is None:
+            self.owner = ctx.author
+            if ctx.author.id not in self.queue:
+                self.queue.insert(0, ctx.author.id)
+            await  ctx.send(f"{ctx.author.display_name} is the new queue owner!")
+            if len(self.queue) == 10:
+                self.accepted = []
+                await self.call_to_accept(ctx)
             else:
-                await ctx.send("This queue already has an owner")
+                await self.re_open_queue_if_necessary(ctx)
+            await self.update_queue_post(ctx)
         else:
-            await  ctx.send("You are not a host")
+            await ctx.send("This queue already has an owner")
+        # else:
+        #     await  ctx.send("You are not a host")
 
     async def find_new_host(self, ctx):
         self.owner = None
