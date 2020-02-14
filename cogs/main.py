@@ -91,7 +91,7 @@ class Main(commands.Cog):
             self.owner = ctx.author
             self.queue.append(ctx.author.id)
             channel = ctx.guild.get_channel(self.channelid)
-            pre_queue_post = await channel.send("Game's password is: " + password)
+            pre_queue_post = await channel.send("Game's password is: " + password + "\n \n")
             self.do_not_delete.append(pre_queue_post.id)
             self.queue_post = await channel.send("Loading...")
             self.queue_post = self.queue_post.id
