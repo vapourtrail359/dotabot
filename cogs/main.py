@@ -76,9 +76,10 @@ class Main(commands.Cog):
                                     inline=False)
                 i += 1
 
+
         channel = ctx.guild.get_channel(self.channelid)
         message = await channel.fetch_message(self.queue_post)
-        await message.edit(content='', embed=e)
+        await message.edit(content=f"Open spots: {10-len(self.queue)}", embed=e)
 
     @on_queue_channel()
     @commands.command()
