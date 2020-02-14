@@ -94,6 +94,7 @@ class Main(commands.Cog):
             pre_queue_post = await channel.send("Game's password is: " + password + "\n \n")
             self.do_not_delete.append(pre_queue_post.id)
             self.queue_post = await channel.send("Loading...")
+            self.status_message = await ctx.send("...")
             self.queue_post = self.queue_post.id
             self.do_not_delete.append(self.queue_post)
             await self.call_to_join(ctx)
@@ -107,10 +108,12 @@ class Main(commands.Cog):
 
     async def call_to_join(self, ctx):
         txt = "Queue is now open, waiting for more players to join!"
-        if self.status_message is None:
-            self.status_message = await ctx.send(txt)
-        else:
+        try:
             await self.status_message.edit(content=txt)
+        except:
+            self.status_message = await ctx.send(txt)
+            self.do_not_delete.append(self.status_message.id)
+            
 
     @on_queue_channel()
     @commands.command()
