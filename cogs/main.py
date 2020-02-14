@@ -38,7 +38,7 @@ class Main(commands.Cog):
     async def on_message(self, message):
         if message.channel == message.guild.get_channel(self.channelid):
             await asyncio.sleep(5)
-            if message.id not in self.do_not_delete and not message.pinned:
+            if message.id not in self.do_not_delete and not message.pinned and not message.id == self.status_message.id:
                 try:
                     await message.delete()
                 except:
