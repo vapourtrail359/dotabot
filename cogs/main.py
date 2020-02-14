@@ -106,14 +106,17 @@ class Main(commands.Cog):
         # else:
         #     await ctx.send("Only hosts can do this!")
 
+
     async def call_to_join(self, ctx):
         txt = "Queue is now open, waiting for more players to join!"
+        await self.update_status(txt)
+            
+    async def update_status(self,txt):
         try:
             await self.status_message.edit(content=txt)
         except:
             self.status_message = await ctx.send(txt)
             self.do_not_delete.append(self.status_message.id)
-            
 
     @on_queue_channel()
     @commands.command()
@@ -144,7 +147,7 @@ class Main(commands.Cog):
         await asyncio.sleep(60)
         if not self.cancel_wait:
             if len(self.accepted) != 10:
-                await self.status_message.edit(content="One minute has passed! kicking all non acceptors")
+                await self.update_status("One minute has passed! kicking all non acceptors")
                 await asyncio.sleep(5)
                 for p in self.queue:
                     if p not in self.accepted:
@@ -182,8 +185,7 @@ class Main(commands.Cog):
     async def call_to_accept(self, ctx):
         members = [ctx.guild.get_member(id) for id in self.queue if id > 20]
         mentions = [m.mention for m in members]
-        await self.status_message.edit(
-            content="Queue is now full, please send !accept in this text channel to confirm "
+        await self.update_status("Queue is now full, please send !accept in this text channel to confirm "
                     "your participation in the match. You have one minute to do this, or you'll be "
                     "kicked! \n" + ' '.join(
                 mentions))
@@ -201,7 +203,7 @@ class Main(commands.Cog):
                 else:
                     await ctx.send(f"{ctx.author.mention} you already accepted!")
                 if len(self.accepted) == 10 == len(self.queue):
-                    await self.status_message.edit(content="All players have accepted the match! Let the game start!")
+                    await self.update_status("All players have accepted the match! Let the game start!")
                 await self.update_queue_post(ctx)
             else:
                 await ctx.send(f"{ctx.author.mention} only people who joined the queue can lock in, sorry!")
@@ -300,12 +302,12 @@ class Main(commands.Cog):
 
     async def find_new_host(self, ctx):
         self.owner = None
-        await self.status_message.edit(content="The queue is now owner-less! it will be auto deleted unless someone "
+        await self.update_status("The queue is now owner-less! it will be auto deleted unless someone "
                                                "uses the !takeover command "
                                                "in the next 2 minutes")
         await asyncio.sleep(2 * 60)
         if self.owner is None:
-            await self.status_message.edit(content="No new owner volunteered! deleting queue....")
+            await self.update_status("No new owner volunteered! deleting queue....")
             await asyncio.sleep(10)
             await self.do_delete(ctx)
 
