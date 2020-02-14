@@ -82,7 +82,7 @@ class Main(commands.Cog):
 
     @on_queue_channel()
     @commands.command()
-    async def create(self, ctx, *, password: str = "default"):
+    async def create(self, ctx, *, password: str = "dota"):
         # if "Host" in [r.name for r in ctx.author.roles]:
         if self.queue is None:
             await self.reset(ctx)
