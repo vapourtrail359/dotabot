@@ -10,7 +10,7 @@ from utils.checks import dev
 def on_queue_channel():
     def predicate(ctx):
         try:
-            return ctx.channel.id == 675421307852292127
+            return ctx.channel.id == 677266311008616489
         except:
             pass
     return commands.check(predicate)
@@ -26,7 +26,7 @@ class Main(commands.Cog):
         self.kick_dict = defaultdict(lambda: set([]))
         self.kick_threshold = 7
         self.owner = None
-        self.channelid = 675421307852292127
+        self.channelid = 677266311008616489
         self.do_not_delete = []
         self.queue_post = None
         self.accepted_message = None
