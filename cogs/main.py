@@ -13,7 +13,9 @@ def on_queue_channel():
             return ctx.channel.id == 677266311008616489
         except:
             pass
+
     return commands.check(predicate)
+
 
 class Main(commands.Cog):
     """The description for Main goes here."""
@@ -33,12 +35,13 @@ class Main(commands.Cog):
         self.status_message = None
         self.cancel_wait = False
         self.previous_status = None
+        self.pre_queue_post = None
 
     @commands.Cog.listener()
     async def on_message(self, message):
         if message.channel == message.guild.get_channel(self.channelid):
             await asyncio.sleep(5)
-            if message.id not in self.do_not_delete and not message.pinned and not message.id == self.status_message.id:
+            if message.id not in self.do_not_delete and not message.pinned and (self.status_message is None or not message.id == self.status_message.id):
                 try:
                     await message.delete()
                 except:
@@ -50,68 +53,84 @@ class Main(commands.Cog):
         e.colour = discord.Colour.blue()
         e.title = "Queue:"
         i = 0
+
+        if self.owner is not None and self.owner.id in self.queue:
+            if self.closed:
+                if self.owner.id in self.accepted:
+                    e.add_field(name=f"\u200b \u0009 [✅] [H] {self.owner.display_name}", value="\u200b",
+                                inline=False)
+                else:
+                    e.add_field(name=f"\u200b \u0009 [❌] Host: {self.owner.display_name}", value="\u200b",
+                                inline=False)
+            else:
+                e.add_field(name=f"\u200b \u0009 Host: {self.owner.display_name}", value="\u200b", inline=False)
+
         for guyid in q:
             guy = ctx.guild.get_member(guyid)
             if guy:
-                if i == 0 and self.owner is not None and self.owner.id in self.queue:
-                    if self.closed:
-                        if self.owner.id in self.accepted:
-                            e.add_field(name=f"\u200b \u0009 [✅] [H] {self.owner.display_name}", value="\u200b",
-                                        inline=False)
-                        else:
-                            e.add_field(name=f"\u200b \u0009 [❎] Host: {self.owner.display_name}", value="\u200b",
-                                        inline=False)
-                    else:
-                        e.add_field(name=f"\u200b \u0009 Host: {self.owner.display_name}", value="\u200b", inline=False)
-                else:
+                if guy != self.owner:
                     if self.closed:
                         if guyid in self.accepted:
                             e.add_field(name=f"\u200b \u0009 [✅] \u200b \u0009 {guy.display_name}", value="\u200b",
                                         inline=False)
                         else:
-                            e.add_field(name=f"\u200b \u0009 [❎] \u200b \u0009 {guy.display_name}", value="\u200b",
+                            e.add_field(name=f"\u200b \u0009 [❌] \u200b \u0009 {guy.display_name}", value="\u200b",
                                         inline=False)
                     else:
-                        e.add_field(name=f"\u200b \u0009 {i} \u200b \u0009 {guy.display_name}", value="\u200b",
+                        e.add_field(name=f"\u200b \u0009 {i + 1} \u200b \u0009 {guy.display_name}", value="\u200b",
                                     inline=False)
-                i += 1
-
+                    i += 1
 
         channel = ctx.guild.get_channel(self.channelid)
         message = await channel.fetch_message(self.queue_post)
-        await message.edit(content=f"Open spots: {10-len(self.queue)}", embed=e)
+        await message.edit(content=f"Open spots: {10 - len(self.queue)}", embed=e)
 
     @on_queue_channel()
     @commands.command()
-    async def create(self, ctx, *, password: str = "dota"):
-        # if "Host" in [r.name for r in ctx.author.roles]:
+    async def host(self, ctx, *, password: str = "dota"):
         if self.queue is None:
-            await self.reset(ctx)
-            self.closed = False
+            await self._create(ctx, password=password, author_is_owner=True)
+        elif self.owner is None:
             self.owner = ctx.author
-            self.queue.append(ctx.author.id)
-            channel = ctx.guild.get_channel(self.channelid)
-            pre_queue_post = await channel.send("Game's password is: " + password + "\n \n")
-            self.do_not_delete.append(pre_queue_post.id)
-            self.queue_post = await channel.send("Loading...")
-            self.status_message = await ctx.send("...")
-            self.queue_post = self.queue_post.id
-            self.do_not_delete.append(self.queue_post)
-            await self.call_to_join(ctx)
-            self.do_not_delete.append(self.status_message.id)
+            await self.pre_queue_post.edit(content="Game's password is: " + password)
             await self.update_queue_post(ctx)
-
+            if ctx.author.id not in self.queue:
+                self.queue.append(ctx.author.id)
+                await self.update_queue_post(ctx)
+            if len(self.queue) == 10:
+                self.closed = True
+                await self.call_to_accept(ctx)
         else:
-            await ctx.send("Queue already exists!")
-        # else:
-        #     await ctx.send("Only hosts can do this!")
+            await ctx.send("The current queue already has a host")
 
+    async def _create(self, ctx, password=None, author_is_owner=False):
+        if author_is_owner:
+            owner = ctx.author
+        else:
+            owner = None
+        await self.reset(ctx)
+        self.closed = False
+        self.owner = owner
+        self.queue.append(ctx.author.id)
+        channel = ctx.guild.get_channel(self.channelid)
+        if password is not None:
+            self.pre_queue_post = await channel.send("Game's password is: " + password)
+        else:
+            self.pre_queue_post = await channel.send("No password yet")
+        self.do_not_delete.append(self.pre_queue_post.id)
+        self.queue_post = await channel.send("Loading...")
+        self.status_message = await ctx.send("...")
+        self.queue_post = self.queue_post.id
+        self.do_not_delete.append(self.queue_post)
+        await self.call_to_join(ctx)
+        self.do_not_delete.append(self.status_message.id)
+        await self.update_queue_post(ctx)
 
     async def call_to_join(self, ctx):
         txt = "Queue is now open, waiting for more players to join!"
         await self.update_status(txt)
-            
-    async def update_status(self,txt):
+
+    async def update_status(self, txt):
         try:
             await self.status_message.edit(content=txt)
         except:
@@ -122,10 +141,11 @@ class Main(commands.Cog):
     @commands.command()
     async def delete(self, ctx):
 
-        if self.owner == ctx.author:
+        is_admin = "Admin" in [r.name for r in ctx.author.roles]
+        if self.owner == ctx.author or is_admin:
             await self.do_delete(ctx)
         else:
-            await ctx.send("Only the queue owner can do this")
+            await ctx.send("Only the queue owner or Admins can do this")
 
     async def do_delete(self, ctx):
         c = ctx.guild.get_channel(self.channelid)
@@ -146,16 +166,19 @@ class Main(commands.Cog):
     async def wait_for_accepts(self, ctx):
         await asyncio.sleep(60)
         if not self.cancel_wait:
-            if len(self.accepted) != 10:
+            if len(self.queue) < 10:
+                await self.re_open_queue_if_necessary(ctx)
+                return
+            elif self.owner is None:
+                await self.find_new_host(ctx)
+                return
+            elif len(self.accepted) != 10:
                 await self.update_status("One minute has passed! kicking all non acceptors")
                 await asyncio.sleep(5)
-                for p in self.queue:
-                    if p not in self.accepted:
-                        self.queue.remove(p)
-                        if self.owner is None or p == self.owner.id:
-                            await self.update_queue_post(ctx)
-                            await self.re_open_queue_if_necessary(ctx)
-                            await self.find_new_host(ctx)
+                self.queue = list(set(self.queue).intersection(set(self.accepted)))
+                if self.owner is not None and self.owner.id not in self.queue:
+                    self.owner = None
+                    await self.pre_queue_post.edit(content="No password yet")
                 await self.update_queue_post(ctx)
                 await self.re_open_queue_if_necessary(ctx)
         else:
@@ -171,24 +194,27 @@ class Main(commands.Cog):
                     await  ctx.send(
                         f"{ctx.author.display_name} joined the queue! we now have {10 - len(self.queue)} open spots!")
                     await self.update_queue_post(ctx)
-                    if len(self.queue) == 10:
+                    if len(self.queue) == 10 and self.owner is not None:
                         self.closed = True
                         await self.call_to_accept(ctx)
                         await self.update_queue_post(ctx)
+                    elif self.owner is None:
+                        await self.update_status("Waiting for a host to volunteer! (`!host <password>)`")
                 else:
                     await ctx.send("You already are in the queue")
             else:
                 await ctx.send(ctx.author.mention + " the queue is already closed, sorry!")
         else:
-            await ctx.send("There is no queue to join!")
+            await self._create(ctx)
 
     async def call_to_accept(self, ctx):
+        self.accepted = []
         members = [ctx.guild.get_member(id) for id in self.queue if id > 20]
         mentions = [m.mention for m in members]
         await self.update_status("Queue is now full, please send !accept in this text channel to confirm "
-                    "your participation in the match. You have one minute to do this, or you'll be "
-                    "kicked! \n" + ' '.join(
-                mentions))
+                                 "your participation in the match. You have one minute to do this, or you'll be "
+                                 "kicked! \n" + ' '.join(
+            mentions))
         await self.wait_for_accepts(ctx)
 
     @on_queue_channel()
@@ -209,6 +235,7 @@ class Main(commands.Cog):
                 await ctx.send(f"{ctx.author.mention} only people who joined the queue can lock in, sorry!")
         else:
             await ctx.send(f"{ctx.author.mention} the queue is still open, you can't lock in yet!")
+
     @on_queue_channel()
     @commands.command()
     async def leave(self, ctx):  # name optional
@@ -224,6 +251,7 @@ class Main(commands.Cog):
             if ctx.author.id in self.accepted:
                 self.accepted.remove(ctx.author.id)
         if ctx.author == self.owner:
+            await self.pre_queue_post.edit(content="No password yet")
             await self.update_queue_post(ctx)
             await self.find_new_host(ctx)
             self.owner = None
@@ -260,56 +288,55 @@ class Main(commands.Cog):
         await self.re_open_queue_if_necessary(ctx)
 
     async def re_open_queue_if_necessary(self, ctx):
-        if len(self.queue) < 10 and self.closed:
+        if len(self.queue) < 10:
             self.accepted = []
-            await ctx.send(f"Not enough players to start a game! Re opening the queue to accept new players...")
             await self.call_to_join(ctx)
             self.closed = False
+        elif self.owner is None:
+            await self.find_new_host(ctx)
+
     @dev()
     @commands.command()
     async def test_add(self, ctx, n: int):
         self.queue += list(range(1, 20)[:n])
         await ctx.send(":thumbsup:")
+
     @dev()
     @commands.command()
     async def test_accept(self, ctx, n: int):
         self.accepted += list(range(1, 20)[:n])
         await ctx.send(":thumbsup:")
+
     @dev()
     @commands.command()
     async def p(self, ctx):
         await ctx.send(str(self.queue))
 
-    @on_queue_channel()
-    @commands.command()
-    async def takeover(self, ctx):
-        # if "Host" in [r.name for r in ctx.author.roles]:
-        if self.owner is None:
-            self.owner = ctx.author
-            if ctx.author.id not in self.queue:
-                self.queue.insert(0, ctx.author.id)
-            await  ctx.send(f"{ctx.author.display_name} is the new queue owner!")
-            if len(self.queue) == 10:
-                self.accepted = []
-                await self.call_to_accept(ctx)
-            else:
-                await self.re_open_queue_if_necessary(ctx)
-            await self.update_queue_post(ctx)
-        else:
-            await ctx.send("This queue already has an owner")
+    # @on_queue_channel()
+    # @commands.command()
+    # async def takeover(self, ctx):
+    #     # if "Host" in [r.name for r in ctx.author.roles]:
+    #     if self.owner is None:
+    #         self.owner = ctx.author
+    #         if ctx.author.id not in self.queue:
+    #             self.queue.insert(0, ctx.author.id)
+    #         await  ctx.send(f"{ctx.author.display_name} is the new queue owner!")
+    #         if len(self.queue) == 10:
+    #             self.accepted = []
+    #             await self.call_to_accept(ctx)
+    #         else:
+    #             await self.re_open_queue_if_necessary(ctx)
+    #         await self.update_queue_post(ctx)
+    #     else:
+    #         await ctx.send("This queue already has an owner")
         # else:
         #     await  ctx.send("You are not a host")
 
     async def find_new_host(self, ctx):
         self.owner = None
-        await self.update_status("The queue is now owner-less! it will be auto deleted unless someone "
-                                               "uses the !takeover command "
-                                               "in the next 2 minutes")
-        await asyncio.sleep(2 * 60)
-        if self.owner is None:
-            await self.update_status("No new owner volunteered! deleting queue....")
-            await asyncio.sleep(10)
-            await self.do_delete(ctx)
+        await self.update_status("The queue is now host-less! the game can not start without a host, to become the "
+                                 "new host, use the !host <password> command!")
+
 
 
 def setup(bot):
