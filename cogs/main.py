@@ -67,6 +67,8 @@ class Main(commands.Cog):
             else:
                 e.add_field(name=f"\u200b \u0009 Host: {self.owner.display_name}", value="\u200b", inline=False)
 
+            i+=1
+
         for guyid in q:
             guy = ctx.guild.get_member(guyid)
             if guy:
