@@ -204,7 +204,7 @@ class Main(commands.Cog):
                         await self.call_to_accept(ctx)
                         await self.update_queue_post(ctx)
                     elif self.owner is None:
-                        await self.update_status("Waiting for a host to volunteer! (`!host <password>)`")
+                        await self.find_new_host(ctx)
                 else:
                     await ctx.send("You already are in the queue")
             else:
@@ -346,8 +346,7 @@ class Main(commands.Cog):
     async def find_new_host(self, ctx):
         self.owner = None
         if len(self.queue) == 10:
-            await self.update_status("The queue is now host-less! the game can not start without a host, to become the "
-                                     "new host, use the !host <password> command!")
+            await self.update_status("Waiting for a host to volunteer! (`!host <password>)`")
         else:
             await self.re_open_queue_if_necessary(ctx)
 
