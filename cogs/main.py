@@ -97,11 +97,14 @@ class Main(commands.Cog):
             if ctx.author.id not in self.queue:
                 self.queue.append(ctx.author.id)
                 await self.update_queue_post(ctx)
+            await self.update_queue_post(ctx)
             if len(self.queue) == 10:
                 self.closed = True
                 await self.call_to_accept(ctx)
         else:
             await ctx.send("The current queue already has a host")
+
+        await self.update_queue_post(ctx)
 
     async def _create(self, ctx, password=None, author_is_owner=False):
         if author_is_owner:
@@ -207,6 +210,8 @@ class Main(commands.Cog):
         else:
             await self._create(ctx)
 
+        await self.update_queue_post(ctx)
+
     async def call_to_accept(self, ctx):
         self.accepted = []
         members = [ctx.guild.get_member(id) for id in self.queue if id > 20]
@@ -236,6 +241,8 @@ class Main(commands.Cog):
         else:
             await ctx.send(f"{ctx.author.mention} the queue is still open, you can't lock in yet!")
 
+        await self.update_queue_post(ctx)
+
     @on_queue_channel()
     @commands.command()
     async def leave(self, ctx):  # name optional
@@ -256,6 +263,7 @@ class Main(commands.Cog):
             await self.find_new_host(ctx)
             self.owner = None
         await self.re_open_queue_if_necessary(ctx)
+        await self.update_queue_post(ctx)
         await self.update_queue_post(ctx)
 
     @on_queue_channel()
@@ -278,6 +286,7 @@ class Main(commands.Cog):
             await self.update_queue_post(ctx)
         else:
             await ctx.send(f"{ctx.author.mention} you are not on the queue!")
+        await self.update_queue_post(ctx)
 
     async def do_kick(self, ctx, guy):
         await ctx.send(f"{guy.mention} was kicked from the queue!")
@@ -334,8 +343,11 @@ class Main(commands.Cog):
 
     async def find_new_host(self, ctx):
         self.owner = None
-        await self.update_status("The queue is now host-less! the game can not start without a host, to become the "
-                                 "new host, use the !host <password> command!")
+        if len(self.queue) == 10:
+            await self.update_status("The queue is now host-less! the game can not start without a host, to become the "
+                                     "new host, use the !host <password> command!")
+        else:
+            await self.re_open_queue_if_necessary(ctx)
 
 
 
