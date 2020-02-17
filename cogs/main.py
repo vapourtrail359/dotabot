@@ -41,7 +41,9 @@ class Main(commands.Cog):
     async def on_message(self, message):
         if message.channel == message.guild.get_channel(self.channelid):
             await asyncio.sleep(5)
-            if message.id not in self.do_not_delete and not message.pinned and (self.status_message is None or not message.id == self.status_message.id):
+            if message.id not in self.do_not_delete and not message.pinned and \
+                    (self.status_message is None or not message.id == self.status_message.id)\
+                    and (self.pre_queue_post is None or not message.id == self.pre_queue_post.id):
                 try:
                     await message.delete()
                 except:
@@ -145,10 +147,10 @@ class Main(commands.Cog):
     async def delete(self, ctx):
 
         is_admin = "Admin" in [r.name for r in ctx.author.roles]
-        if self.owner == ctx.author or is_admin:
+        if is_admin:
             await self.do_delete(ctx)
         else:
-            await ctx.send("Only the queue owner or Admins can do this")
+            await ctx.send("Only the Admins can do this")
 
     async def do_delete(self, ctx):
         c = ctx.guild.get_channel(self.channelid)
