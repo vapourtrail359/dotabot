@@ -35,6 +35,7 @@ class Main(commands.Cog):
         self.previous_status = None
         self.pre_queue_post = None
         self.password = None
+        self.guild = bot.get_guild(663479618564653113)
 
     @commands.Cog.listener()
     async def on_message(self, message):
@@ -84,7 +85,7 @@ class Main(commands.Cog):
                                     inline=False)
                     i += 1
 
-        channel = ctx.guild.get_channel(self.channelid)
+        channel = self.guild.get_channel(self.channelid)
         message = await channel.fetch_message(self.queue_post)
         await message.edit(content=f"Open spots: {10 - len(self.queue)}", embed=e)
 
@@ -120,7 +121,7 @@ class Main(commands.Cog):
         self.closed = False
         self.owner = owner
         self.queue.append(ctx.author.id)
-        channel = ctx.guild.get_channel(self.channelid)
+        channel = self.guild.get_channel(self.channelid)
         if password is not None:
             self.pre_queue_post = await channel.send("Game's password is: " + password)
         else:
@@ -176,7 +177,7 @@ class Main(commands.Cog):
             await ctx.send("Only the host can do this")
 
     async def do_delete(self, ctx):
-        c = ctx.guild.get_channel(self.channelid)
+        c = self.guild.get_channel(self.channelid)
         await self.reset(ctx)
         self.closed = True
         self.queue = None
@@ -188,7 +189,7 @@ class Main(commands.Cog):
         self.kick_dict = defaultdict(lambda: set([]))
         self.queue_post = None
         self.do_not_delete = []
-        c = ctx.guild.get_channel(self.channelid)
+        c = self.guild.get_channel(self.channelid)
         await c.purge(check=lambda x: not x.pinned)
 
     async def wait_for_accepts(self, ctx):
@@ -263,7 +264,7 @@ class Main(commands.Cog):
 
     async def dm_queue(self, ctx, txt):
         ping = []
-        members = [ctx.guild.get_member(id) for id in self.queue if id > 20]
+        members = [self.guild.get_member(id) for id in self.queue if id > 20]
         for member in members:
             try:
                 await member.send(txt)
