@@ -38,7 +38,7 @@ class Main(commands.Cog):
 
     @commands.Cog.listener()
     async def on_message(self, message):
-        if message.channel == message.guild.get_channel(self.channelid):
+        if message.guild is not None and message.channel == message.guild.get_channel(self.channelid):
             await asyncio.sleep(5)
             if message.id not in self.do_not_delete and not message.pinned and \
                     (self.status_message is None or not message.id == self.status_message.id) \
