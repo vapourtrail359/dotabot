@@ -10,7 +10,7 @@ from utils.checks import dev
 def on_queue_channel():
     def predicate(ctx):
         try:
-            return ctx.channel.id == 677266311008616489 or isinstance(ctx.channel, discord.DMChannel)
+            return (ctx.channel.id == 677266311008616489) or (ctx.guild is None)
         except:
             pass
 
