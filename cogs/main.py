@@ -70,7 +70,7 @@ class Main(commands.Cog):
             i += 1
 
         for guyid in q:
-            guy = ctx.guild.get_member(guyid)
+            guy = self.guild.get_member(guyid)
             if guy:
                 if guy != self.owner:
                     if self.closed:
