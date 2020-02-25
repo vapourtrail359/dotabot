@@ -250,7 +250,7 @@ class Main(commands.Cog):
         ping = []
         for member in members:
             try:
-                await member.send("Queue is now full, please send !accept here or in dms to confirm "
+                await member.send("Queue is now full, please send !accept here or in the queue channel to confirm "
                                   "your participation in the match. You have two minutes to do this, or you'll be "
                                   "kicked!")
             except:
@@ -266,6 +266,7 @@ class Main(commands.Cog):
     @on_queue_channel()
     @commands.command()
     async def accept(self, ctx):
+        await self.update_queue_post(ctx)
         if self.closed:
             if ctx.author.id in self.queue:
                 if ctx.author.id not in self.accepted:
