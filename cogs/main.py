@@ -36,6 +36,7 @@ class Main(commands.Cog):
         self.cancel_wait = False
         self.previous_status = None
         self.pre_queue_post = None
+        self.password = None
 
     @commands.Cog.listener()
     async def on_message(self, message):
@@ -94,9 +95,11 @@ class Main(commands.Cog):
     async def host(self, ctx, *, password: str = "dota"):
         if self.queue is None:
             await self._create(ctx, password=password, author_is_owner=True)
+            self.password = password
         elif self.owner is None:
             self.owner = ctx.author
             await self.pre_queue_post.edit(content="Game's password is: " + password)
+            self.password = password
             await self.update_queue_post(ctx)
             if ctx.author.id not in self.queue:
                 self.queue.append(ctx.author.id)
@@ -156,12 +159,12 @@ class Main(commands.Cog):
 
     @on_queue_channel()
     @commands.command()
-    async def remake(self, ctx,*args):
+    async def remake(self, ctx, *args):
 
         if ctx.author.id == self.owner.id:
             visual_queue = self.queue
             visual_queue.remove(self.owner.id)
-            visual_queue.insert(0,self.owner.id)
+            visual_queue.insert(0, self.owner.id)
             to_remove = []
             for i in args:
                 i = int(i) - 1
@@ -173,8 +176,6 @@ class Main(commands.Cog):
             await self.re_open_queue_if_necessary(ctx)
         else:
             await ctx.send("Only the host can do this")
-
-
 
     async def do_delete(self, ctx):
         c = ctx.guild.get_channel(self.channelid)
@@ -207,9 +208,13 @@ class Main(commands.Cog):
                 await self.update_status("Two minutes has passed! kicking all non acceptors")
                 await asyncio.sleep(5)
                 self.queue = list(set(self.queue).intersection(set(self.accepted)))
-                if self.owner is not None and self.owner.id not in self.queue:
+                if self.owner is not None and self.owner.id not in self.queue:  # find new host??
                     self.owner = None
                     await self.pre_queue_post.edit(content="No password yet")
+
+                await self.dm_queue(ctx, f"{10-len(self.queue)} people didn't accept the queue! waiting for more "
+                                         f"people...")
+
                 await self.update_queue_post(ctx)
                 await self.re_open_queue_if_necessary(ctx)
         else:
@@ -242,19 +247,14 @@ class Main(commands.Cog):
 
     async def call_to_accept(self, ctx):
         self.accepted = []
-        members = [ctx.guild.get_member(id) for id in self.queue if id > 20]
-        # mentions = [m.mention for m in members]
         await self.update_status("Queue is now full, please send !accept here or in dms to confirm "
                                  "your participation in the match. You have two minutes to do this, or you'll be "
                                  "kicked!")
-        ping = []
-        for member in members:
-            try:
-                await member.send("Queue is now full, please send !accept here or in the queue channel to confirm "
-                                  "your participation in the match. You have two minutes to do this, or you'll be "
-                                  "kicked!")
-            except:
-                ping.append(member)
+
+        ping = await self.dm_queue(ctx,
+                                   "Queue is now full, please send !accept here or in the queue channel to confirm "
+                                   "your participation in the match. You have two minutes to do this, or you'll be "
+                                   "kicked!")
 
         mentions = [m.mention for m in ping]
         await self.update_status("Queue is now full, please send !accept here or in dms to confirm "
@@ -262,6 +262,16 @@ class Main(commands.Cog):
                                  "kicked! \n" + ' '.join(mentions))
 
         await self.wait_for_accepts(ctx)
+
+    async def dm_queue(self, ctx, txt):
+        ping = []
+        members = [ctx.guild.get_member(id) for id in self.queue if id > 20]
+        for member in members:
+            try:
+                await member.send(txt)
+            except:
+                ping.append(member)
+        return ping
 
     @on_queue_channel()
     @commands.command()
@@ -278,6 +288,7 @@ class Main(commands.Cog):
                 if len(self.accepted) == 10 == len(self.queue):
                     self.closed = False
                     await self.update_status("All players have accepted the match! Let the game start!")
+                    await self.dm_queue(ctx, "Game has been accepted! password is: " + self.password)
                 await self.update_queue_post(ctx)
             else:
                 await ctx.send(f"{ctx.author.mention} only people who joined the queue can lock in, sorry!")
