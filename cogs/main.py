@@ -10,7 +10,7 @@ from utils.checks import dev
 def on_queue_channel():
     def predicate(ctx):
         try:
-            return ctx.channel.id == 677266311008616489
+            return ctx.channel.id == 677266311008616489 or isinstance(ctx.channel, discord.DMChannel)
         except:
             pass
 
@@ -42,7 +42,7 @@ class Main(commands.Cog):
         if message.channel == message.guild.get_channel(self.channelid):
             await asyncio.sleep(5)
             if message.id not in self.do_not_delete and not message.pinned and \
-                    (self.status_message is None or not message.id == self.status_message.id)\
+                    (self.status_message is None or not message.id == self.status_message.id) \
                     and (self.pre_queue_post is None or not message.id == self.pre_queue_post.id):
                 try:
                     await message.delete()
@@ -67,7 +67,7 @@ class Main(commands.Cog):
             else:
                 e.add_field(name=f"\u200b \u0009 Host: {self.owner.display_name}", value="\u200b", inline=False)
 
-            i+=1
+            i += 1
 
         for guyid in q:
             guy = ctx.guild.get_member(guyid)
@@ -154,6 +154,28 @@ class Main(commands.Cog):
         else:
             await ctx.send("Only the Admins can do this")
 
+    @on_queue_channel()
+    @commands.command()
+    async def remake(self, ctx,*args):
+
+        if ctx.author.id == self.owner.id:
+            visual_queue = self.queue
+            visual_queue.remove(self.owner.id)
+            visual_queue.insert(0,self.owner.id)
+            to_remove = []
+            for i in args:
+                i = int(i) - 1
+                to_remove.append(visual_queue[i])
+
+            for id in to_remove:
+                self.queue.remove(id)
+
+            await self.re_open_queue_if_necessary(ctx)
+        else:
+            await ctx.send("Only the host can do this")
+
+
+
     async def do_delete(self, ctx):
         c = ctx.guild.get_channel(self.channelid)
         await self.reset(ctx)
@@ -171,7 +193,9 @@ class Main(commands.Cog):
         await c.purge(check=lambda x: not x.pinned)
 
     async def wait_for_accepts(self, ctx):
-        await asyncio.sleep(60)
+        self.closed = True
+        await self.update_queue_post(ctx)
+        await asyncio.sleep(120)
         if not self.cancel_wait:
             if len(self.queue) < 10:
                 await self.re_open_queue_if_necessary(ctx)
@@ -180,7 +204,7 @@ class Main(commands.Cog):
                 await self.find_new_host(ctx)
                 return
             elif len(self.accepted) != 10:
-                await self.update_status("One minute has passed! kicking all non acceptors")
+                await self.update_status("Two minutes has passed! kicking all non acceptors")
                 await asyncio.sleep(5)
                 self.queue = list(set(self.queue).intersection(set(self.accepted)))
                 if self.owner is not None and self.owner.id not in self.queue:
@@ -219,11 +243,24 @@ class Main(commands.Cog):
     async def call_to_accept(self, ctx):
         self.accepted = []
         members = [ctx.guild.get_member(id) for id in self.queue if id > 20]
-        mentions = [m.mention for m in members]
-        await self.update_status("Queue is now full, please send !accept in this text channel to confirm "
-                                 "your participation in the match. You have one minute to do this, or you'll be "
-                                 "kicked! \n" + ' '.join(
-            mentions))
+        # mentions = [m.mention for m in members]
+        await self.update_status("Queue is now full, please send !accept here or in dms to confirm "
+                                 "your participation in the match. You have two minutes to do this, or you'll be "
+                                 "kicked!")
+        ping = []
+        for member in members:
+            try:
+                await member.send("Queue is now full, please send !accept here or in dms to confirm "
+                                  "your participation in the match. You have two minutes to do this, or you'll be "
+                                  "kicked!")
+            except:
+                ping.append(member)
+
+        mentions = [m.mention for m in ping]
+        await self.update_status("Queue is now full, please send !accept here or in dms to confirm "
+                                 "your participation in the match. You have two minutes to do this, or you'll be "
+                                 "kicked! \n" + ' '.join(mentions))
+
         await self.wait_for_accepts(ctx)
 
     @on_queue_channel()
@@ -238,6 +275,7 @@ class Main(commands.Cog):
                 else:
                     await ctx.send(f"{ctx.author.mention} you already accepted!")
                 if len(self.accepted) == 10 == len(self.queue):
+                    self.closed = False
                     await self.update_status("All players have accepted the match! Let the game start!")
                 await self.update_queue_post(ctx)
             else:
@@ -308,6 +346,8 @@ class Main(commands.Cog):
         elif self.owner is None:
             await self.find_new_host(ctx)
 
+        await self.update_queue_post(ctx)
+
     @dev()
     @commands.command()
     async def test_add(self, ctx, n: int):
@@ -342,8 +382,8 @@ class Main(commands.Cog):
     #         await self.update_queue_post(ctx)
     #     else:
     #         await ctx.send("This queue already has an owner")
-        # else:
-        #     await  ctx.send("You are not a host")
+    # else:
+    #     await  ctx.send("You are not a host")
 
     async def find_new_host(self, ctx):
         self.owner = None
@@ -351,7 +391,6 @@ class Main(commands.Cog):
             await self.update_status("Waiting for a host to volunteer! (`!host <password>)`")
         else:
             await self.re_open_queue_if_necessary(ctx)
-
 
 
 def setup(bot):
