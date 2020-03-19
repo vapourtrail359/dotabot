@@ -55,6 +55,7 @@ class Main(commands.Cog):
         e.colour = discord.Colour.blue()
         e.title = "Queue:"
         i = 0
+        self.guild = self.bot.get_guild(663479618564653113)
 
         if self.owner is not None and self.owner.id in self.queue:
             if self.closed:
@@ -263,6 +264,7 @@ class Main(commands.Cog):
         await self.wait_for_accepts(ctx)
 
     async def dm_queue(self, ctx, txt):
+        self.guild = self.bot.get_guild(663479618564653113)
         ping = []
         members = [self.guild.get_member(id) for id in self.queue if id > 20]
         for member in members:
