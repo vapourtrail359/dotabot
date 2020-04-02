@@ -22,7 +22,10 @@ class Main(commands.Cog):
         self.bot = bot
         self.queue = None
         self.closed = True
+        self.accepted_ready_check = {}
+        self.mentions = []
         self.accepted = []
+        self.ready_check_post = None
         self.kick_dict = defaultdict(lambda: set([]))
         self.kick_threshold = 7
         self.owner = None
@@ -35,7 +38,8 @@ class Main(commands.Cog):
         self.previous_status = None
         self.pre_queue_post = None
         self.password = None
-        self.guild = bot.get_guild(663479618564653113)
+        self.guild_id = 663479618564653113
+        self.guild = bot.get_guild(self.guild_id)
 
     @commands.Cog.listener()
     async def on_message(self, message):
@@ -49,13 +53,16 @@ class Main(commands.Cog):
                 except:
                     print("failed to delete")
 
+    def update_guild(self):
+        self.guild = self.bot.get_guild(self.guild_id)
+
     async def update_queue_post(self, ctx):
         q = self.queue
         e = discord.Embed()
         e.colour = discord.Colour.blue()
         e.title = "Queue:"
         i = 0
-        self.guild = self.bot.get_guild(663479618564653113)
+        self.update_guild()
 
         if self.owner is not None and self.owner.id in self.queue:
             if self.closed:
@@ -89,6 +96,31 @@ class Main(commands.Cog):
         channel = self.guild.get_channel(self.channelid)
         message = await channel.fetch_message(self.queue_post)
         await message.edit(content=f"Open spots: {10 - len(self.queue)}", embed=e)
+
+    async def update_ready_check_post(self, ctx):
+        self.update_guild()
+        channel = self.guild.get_channel(self.channelid)
+        ready_check_post = await channel.fetch_message(self.ready_check_post)
+        e = discord.Embed()
+
+        for guyid in self.accepted_ready_check:
+            guy = self.guild.get_member(guyid)
+            name = guy.display_name
+
+            if self.accepted_ready_check[guyid]:
+                e.add_field(name=f"\u200b \u0009 [✅] \u200b \u0009 {guy.display_name}", value="\u200b",
+                            inline=False)
+            else:
+                e.add_field(name=f"\u200b \u0009 [❌] \u200b \u0009 {guy.display_name}", value="\u200b",
+                            inline=False)
+
+
+        await ready_check_post.edit(
+            content="A player has requested a ready-check. Please send !accept here or "
+            "in dms to confirm you are still ready to play. You have two "
+            "minutes to do this, or the ready-check will be unsuccessful.\n" + ' '.join(self.mentions),
+            embed=e)
+        pass
 
     @on_queue_channel()
     @commands.command()
@@ -187,8 +219,11 @@ class Main(commands.Cog):
     async def reset(self, ctx):
         self.queue = []
         self.accepted = []
+        self.accepted_ready_check = {}
+        self.mentions = []
         self.kick_dict = defaultdict(lambda: set([]))
         self.queue_post = None
+        self.ready_check_post = None
         self.do_not_delete = []
         c = self.guild.get_channel(self.channelid)
         await c.purge(check=lambda x: not x.pinned)
@@ -220,6 +255,18 @@ class Main(commands.Cog):
         else:
             self.cancel_wait = False
 
+    async def wait_for_ready_check_accepts(self, ctx):
+        await self.update_ready_check_post(ctx)
+        await asyncio.sleep(120)
+        if self.is_ready_check_active():
+            channel = self.guild.get_channel(self.channelid)
+            ready_check_post = await channel.fetch_message(self.ready_check_post)
+            not_ready =[self.guild.get_member(id).mention for id in self.accepted_ready_check if not self.accepted_ready_check[id]]
+            await ready_check_post.edit(
+                content="Ready-check complete, the following players are not ready: " + ' '.join(not_ready),
+                embed=None)
+            await self.end_ready_check()
+
     @on_queue_channel()
     @commands.command()
     async def queue(self, ctx):
@@ -232,6 +279,7 @@ class Main(commands.Cog):
                     await self.update_queue_post(ctx)
                     if len(self.queue) == 10 and self.owner is not None:
                         self.closed = True
+                        await self.end_ready_check()
                         await self.call_to_accept(ctx)
                         await self.update_queue_post(ctx)
                     elif self.owner is None:
@@ -264,7 +312,7 @@ class Main(commands.Cog):
         await self.wait_for_accepts(ctx)
 
     async def dm_queue(self, ctx, txt):
-        self.guild = self.bot.get_guild(663479618564653113)
+        self.update_guild()
         ping = []
         members = [self.guild.get_member(id) for id in self.queue if id > 20]
         for member in members:
@@ -274,29 +322,47 @@ class Main(commands.Cog):
                 ping.append(member)
         return ping
 
+    # Accepts a match or ready check
     @on_queue_channel()
     @commands.command()
     async def accept(self, ctx):
-        await self.update_queue_post(ctx)
-        if self.closed:
-            if ctx.author.id in self.queue:
-                if ctx.author.id not in self.accepted:
-                    self.accepted.append(ctx.author.id)
-                    await  ctx.send(f"{ctx.author.display_name} locked in!")
-                    await self.update_queue_post(ctx)
+        if self.is_ready_check_active():
+            if ctx.author.id in self.accepted_ready_check:
+                if not self.accepted_ready_check[ctx.author.id]:
+                    self.accepted_ready_check[ctx.author.id] = True
+                    await ctx.send(f"{ctx.author.mention} is ready!")
+                    await self.update_ready_check_post(ctx)
                 else:
                     await ctx.send(f"{ctx.author.mention} you already accepted!")
-                if len(self.accepted) == 10 == len(self.queue):
-                    self.closed = False
-                    await self.update_status("All players have accepted the match! Let the game start!")
-                    await self.dm_queue(ctx, "Game has been accepted! password is: " + self.password)
-                await self.update_queue_post(ctx)
-            else:
-                await ctx.send(f"{ctx.author.mention} only people who joined the queue can lock in, sorry!")
-        else:
-            await ctx.send(f"{ctx.author.mention} the queue is still open, you can't lock in yet!")
 
-        await self.update_queue_post(ctx)
+                if all(self.accepted_ready_check):
+                    channel = self.guild.get_channel(self.channelid)
+                    ready_check_post = await channel.fetch_message(self.ready_check_post)
+                    await ready_check_post.edit(content="Ready-check complete, all players are ready!", embed=None)
+                    await self.end_ready_check()
+            else:
+                await ctx.send(f"{ctx.author.mention} only people who joined the queue can accept the ready check")
+        else:
+            await self.update_queue_post(ctx)
+            if self.closed:
+                if ctx.author.id in self.queue:
+                    if ctx.author.id not in self.accepted:
+                        self.accepted.append(ctx.author.id)
+                        await  ctx.send(f"{ctx.author.display_name} locked in!")
+                        await self.update_queue_post(ctx)
+                    else:
+                        await ctx.send(f"{ctx.author.mention} you already accepted!")
+                    if len(self.accepted) == 10 == len(self.queue):
+                        self.closed = False
+                        await self.update_status("All players have accepted the match! Let the game start!")
+                        await self.dm_queue(ctx, "Game has been accepted! password is: " + self.password)
+                    await self.update_queue_post(ctx)
+                else:
+                    await ctx.send(f"{ctx.author.mention} only people who joined the queue can lock in, sorry!")
+            else:
+                await ctx.send(f"{ctx.author.mention} the queue is still open, you can't lock in yet!")
+
+            await self.update_queue_post(ctx)
 
     @on_queue_channel()
     @commands.command()
@@ -360,6 +426,62 @@ class Main(commands.Cog):
             await self.find_new_host(ctx)
 
         await self.update_queue_post(ctx)
+
+    @on_queue_channel()
+    @commands.command()
+    async def readycheck(self, ctx, *args):
+        is_admin = "Admin" in [r.name for r in ctx.author.roles]
+        if not is_admin:
+            await ctx.send("Only the Admins can do this")
+            return
+
+        # Don't send ready checks when the queue is nonexistant/full or when a ready check is in progress
+        if not self.queue:
+            await ctx.send("There is no queue yet")
+            return
+        elif self.closed:
+            await ctx.send("The queue is already full")
+            return
+        elif self.is_ready_check_active():
+            await ctx.send("A ready check is already in progress")
+            return
+
+        self.accepted_ready_check = {id: False for id in self.queue}
+
+        self.ready_check_post = await ctx.send("Loading...")
+        self.ready_check_post = self.ready_check_post.id
+        self.do_not_delete.append(self.ready_check_post)
+
+        ping = await self.dm_queue(ctx,
+                                   "A player has requested a ready-check. Please send !accept here or in the queue "
+                                   "channel to confirm you are still ready to play. You have two minutes to do "
+                                   "this, or the ready-check will be unsuccessful."
+                                   )
+
+        mentions = [m.mention for m in ping]
+
+        self.ready_check_mentions = mentions
+        await self.update_ready_check_post(ctx)
+
+        await self.wait_for_ready_check_accepts(ctx)
+
+    def is_ready_check_active(self):
+        return len(self.accepted_ready_check) > 0
+
+    async def end_ready_check(self):
+        self.accepted_ready_check = {}
+        self.mentions = []
+        ready_check_post_id = self.ready_check_post
+        channel = self.guild.get_channel(self.channelid)
+        ready_check_post = await channel.fetch_message(ready_check_post_id)
+        await asyncio.sleep(60)
+        if ready_check_post_id in self.do_not_delete:
+            self.do_not_delete.remove(ready_check_post_id)
+        try:
+            await ready_check_post.delete()
+        except:
+            print("Failed to delete")
+        self.ready_check_post = None
 
     @dev()
     @commands.command()
