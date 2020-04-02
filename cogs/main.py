@@ -6,7 +6,6 @@ from _collections import defaultdict
 import asyncio
 from utils.checks import dev
 
-
 def on_queue_channel():
     def predicate(ctx):
 
@@ -265,7 +264,7 @@ class Main(commands.Cog):
             await ready_check_post.edit(
                 content="Ready-check complete, the following players are not ready: " + ' '.join(not_ready),
                 embed=None)
-            await self.end_ready_check()
+            await self.end_ready_check(60)
 
     @on_queue_channel()
     @commands.command()
@@ -279,7 +278,7 @@ class Main(commands.Cog):
                     await self.update_queue_post(ctx)
                     if len(self.queue) == 10 and self.owner is not None:
                         self.closed = True
-                        await self.end_ready_check()
+                        await self.end_ready_check(0)
                         await self.call_to_accept(ctx)
                         await self.update_queue_post(ctx)
                     elif self.owner is None:
@@ -339,7 +338,7 @@ class Main(commands.Cog):
                     channel = self.guild.get_channel(self.channelid)
                     ready_check_post = await channel.fetch_message(self.ready_check_post)
                     await ready_check_post.edit(content="Ready-check complete, all players are ready!", embed=None)
-                    await self.end_ready_check()
+                    await self.end_ready_check(60)
             else:
                 await ctx.send(f"{ctx.author.mention} only people who joined the queue can accept the ready check")
         else:
@@ -468,13 +467,13 @@ class Main(commands.Cog):
     def is_ready_check_active(self):
         return len(self.accepted_ready_check) > 0
 
-    async def end_ready_check(self):
+    async def end_ready_check(self, post_delete_delay):
         self.accepted_ready_check = {}
         self.mentions = []
         ready_check_post_id = self.ready_check_post
         channel = self.guild.get_channel(self.channelid)
         ready_check_post = await channel.fetch_message(ready_check_post_id)
-        await asyncio.sleep(60)
+        await asyncio.sleep(post_delete_delay)
         if ready_check_post_id in self.do_not_delete:
             self.do_not_delete.remove(ready_check_post_id)
         try:
