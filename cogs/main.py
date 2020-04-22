@@ -20,6 +20,7 @@ class Main(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         self.queue = None
+        self.queue_max_size = 10
         self.closed = True
         self.accepted_ready_check = {}
         self.mentions = []
@@ -94,7 +95,7 @@ class Main(commands.Cog):
 
         channel = self.guild.get_channel(self.channelid)
         message = await channel.fetch_message(self.queue_post)
-        await message.edit(content=f"Open spots: {10 - len(self.queue)}", embed=e)
+        await message.edit(content=f"Open spots: {self.queue_max_size - len(self.queue)}", embed=e)
 
     async def update_ready_check_post(self, ctx):
         self.update_guild()
@@ -136,7 +137,7 @@ class Main(commands.Cog):
                 self.queue.append(ctx.author.id)
                 await self.update_queue_post(ctx)
             await self.update_queue_post(ctx)
-            if len(self.queue) == 10:
+            if len(self.queue) == self.queue_max_size:
                 self.closed = True
                 await self.call_to_accept(ctx)
         else:
@@ -233,13 +234,13 @@ class Main(commands.Cog):
         await self.update_queue_post(ctx)
         await asyncio.sleep(120)
         if not self.cancel_wait:
-            if len(self.queue) < 10:
+            if len(self.queue) < self.queue_max_size:
                 await self.re_open_queue_if_necessary(ctx)
                 return
             elif self.owner is None:
                 await self.find_new_host(ctx)
                 return
-            elif len(self.accepted) != 10:
+            elif len(self.accepted) != self.queue_max_size:
                 await self.update_status("Two minutes has passed! kicking all non acceptors")
                 await asyncio.sleep(5)
                 self.queue = list(set(self.queue).intersection(set(self.accepted)))
@@ -247,7 +248,7 @@ class Main(commands.Cog):
                     self.owner = None
                     await self.pre_queue_post.edit(content="No password yet")
 
-                await self.dm_queue(ctx, f"{10-len(self.queue)} people didn't accept the queue! waiting for more "
+                await self.dm_queue(ctx, f"{self.queue_max_size-len(self.queue)} people didn't accept the queue! waiting for more "
                                          f"people...")
 
                 await self.update_queue_post(ctx)
@@ -271,13 +272,13 @@ class Main(commands.Cog):
     @commands.command()
     async def queue(self, ctx):
         if self.queue is not None:
-            if len(self.queue) < 10 and not self.closed:
+            if len(self.queue) < self.queue_max_size and not self.closed:
                 if ctx.author.id not in self.queue:
                     self.queue.append(ctx.author.id)
                     await  ctx.send(
-                        f"{ctx.author.display_name} joined the queue! we now have {10 - len(self.queue)} open spots!")
+                        f"{ctx.author.display_name} joined the queue! we now have {self.queue_max_size - len(self.queue)} open spots!")
                     await self.update_queue_post(ctx)
-                    if len(self.queue) == 10 and self.owner is not None:
+                    if len(self.queue) == self.queue_max_size and self.owner is not None:
                         self.closed = True
                         await self.end_ready_check(0)
                         await self.call_to_accept(ctx)
@@ -352,7 +353,7 @@ class Main(commands.Cog):
                         await self.update_queue_post(ctx)
                     else:
                         await ctx.send(f"{ctx.author.mention} you already accepted!")
-                    if len(self.accepted) == 10 == len(self.queue):
+                    if len(self.accepted) == self.queue_max_size == len(self.queue):
                         self.closed = False
                         await self.update_status("All players have accepted the match! Let the game start!")
                         await self.dm_queue(ctx, "Game has been accepted! password is: " + self.password)
@@ -369,7 +370,7 @@ class Main(commands.Cog):
     async def leave(self, ctx):  # name optional
 
         if ctx.author.id in self.queue:
-            if len(self.queue) == 10:
+            if len(self.queue) == self.queue_max_size:
                 self.cancel_wait = True
                 await self.re_open_queue_if_necessary(ctx)
             self.queue.remove(ctx.author.id)
@@ -418,7 +419,7 @@ class Main(commands.Cog):
         await self.re_open_queue_if_necessary(ctx)
 
     async def re_open_queue_if_necessary(self, ctx):
-        if len(self.queue) < 10:
+        if len(self.queue) < self.queue_max_size:
             self.accepted = []
             await self.call_to_join(ctx)
             self.closed = False
@@ -508,7 +509,7 @@ class Main(commands.Cog):
     #         if ctx.author.id not in self.queue:
     #             self.queue.insert(0, ctx.author.id)
     #         await  ctx.send(f"{ctx.author.display_name} is the new queue owner!")
-    #         if len(self.queue) == 10:
+    #         if len(self.queue) == self.queue_max_size:
     #             self.accepted = []
     #             await self.call_to_accept(ctx)
     #         else:
@@ -521,7 +522,7 @@ class Main(commands.Cog):
 
     async def find_new_host(self, ctx):
         self.owner = None
-        if len(self.queue) == 10:
+        if len(self.queue) == self.queue_max_size:
             await self.update_status("Waiting for a host to volunteer! (`!host <password>)`")
         else:
             await self.re_open_queue_if_necessary(ctx)
