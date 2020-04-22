@@ -269,8 +269,8 @@ class Main(commands.Cog):
             await self.end_ready_check(60)
 
     @on_queue_channel()
-    @commands.command()
-    async def queue(self, ctx):
+    @commands.command(name="queue", aliases=["q"])
+    async def queue_up(self, ctx):
         if self.queue is not None:
             if len(self.queue) < self.queue_max_size and not self.closed:
                 if ctx.author.id not in self.queue:
@@ -325,7 +325,7 @@ class Main(commands.Cog):
 
     # Accepts a match or ready check
     @on_queue_channel()
-    @commands.command()
+    @commands.command(aliases=["a"])
     async def accept(self, ctx):
         if self.is_ready_check_active():
             if ctx.author.id in self.accepted_ready_check:
@@ -366,7 +366,7 @@ class Main(commands.Cog):
             await self.update_queue_post(ctx)
 
     @on_queue_channel()
-    @commands.command()
+    @commands.command(aliases=["l"])
     async def leave(self, ctx):  # name optional
 
         if ctx.author.id in self.queue:

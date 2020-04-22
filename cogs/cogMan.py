@@ -37,7 +37,7 @@ class cogMan(commands.Cog):
 		except Exception as e:
 			await ctx.send("""**Traceback:**\n```{0}```\n""".format(' '.join(traceback.format_exception(None, e, e.__traceback__))))
 	
-	@commands.command(aliases=["l"])
+	@commands.command()
 	@dev()
 	async def load(self,ctx,*,cog=None):
 		
