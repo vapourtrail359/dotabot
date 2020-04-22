@@ -294,6 +294,32 @@ class Main(commands.Cog):
 
         await self.update_queue_post(ctx)
 
+    @on_queue_channel()
+    @commands.command(aliases=["queuein"])
+    async def queue_in(self, ctx, delay): 
+        q = self.get_delay_in_seconds(delay)
+        print(q, type(q))
+        await asyncio.sleep(self.get_delay_in_seconds(delay))
+        return await self.queue_up(ctx)
+
+    def get_delay_in_seconds(self, delay):
+        def isDigit(x):
+            try:
+                float(x)
+                return True
+            except ValueError:
+                return False
+        if isDigit(delay):
+            return float(delay) * 60
+        else:
+            delay = delay.lower()    
+            parse_float = lambda x: float(delay[:delay.find(x)])
+            if "m" in delay:
+                return parse_float("m") * 60
+            elif "h" in delay:   
+                return parse_float("h") * 3600
+            return 0
+
     async def call_to_accept(self, ctx):
         self.accepted = []
         await self.update_status("Queue is now full, please send !accept here or in dms to confirm "
@@ -387,6 +413,12 @@ class Main(commands.Cog):
         await self.re_open_queue_if_necessary(ctx)
         await self.update_queue_post(ctx)
         await self.update_queue_post(ctx)
+
+    @on_queue_channel()
+    @commands.command(aliases=["leavein"])
+    async def leave_in(self, ctx, delay):
+        await asyncio.sleep(self.get_delay_in_seconds(delay))
+        return await self.leave(ctx)
 
     @on_queue_channel()
     @commands.command()
