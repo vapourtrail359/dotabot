@@ -178,12 +178,13 @@ class Main(commands.Cog):
             self.status_message = await ctx.send(txt)
             self.do_not_delete.append(self.status_message.id)
 
+    def is_admin(self, ctx):
+        return "Admin" in [r.name for r in ctx.author.roles]
+
     @on_queue_channel()
     @commands.command()
     async def delete(self, ctx):
-
-        is_admin = "Admin" in [r.name for r in ctx.author.roles]
-        if is_admin:
+        if self.is_admin(ctx):
             await self.do_delete(ctx)
         else:
             await ctx.send("Only the Admins can do this")
@@ -393,7 +394,7 @@ class Main(commands.Cog):
             await ctx.send("You can't kick the queue owner!")
             return
         if guy.id in self.queue:
-            if ctx.author == self.owner:
+            if ctx.author == self.owner or self.is_admin():
                 await self.do_kick(ctx, guy)
             else:
                 self.kick_dict[guy.id].add(ctx.author.id)
@@ -429,8 +430,7 @@ class Main(commands.Cog):
     @on_queue_channel()
     @commands.command()
     async def readycheck(self, ctx, *args):
-        is_admin = "Admin" in [r.name for r in ctx.author.roles]
-        if not is_admin:
+        if not self.is_admin(ctx):
             await ctx.send("Only the Admins can do this")
             return
 
