@@ -269,7 +269,7 @@ class Main(commands.Cog):
             await self.end_ready_check(60)
 
     @on_queue_channel()
-    @commands.command(name="queue", aliases=["q"])
+    @commands.command(name="queue", aliases=["q", "join"])
     async def queue_up(self, ctx):
         if self.queue is not None:
             if len(self.queue) < self.queue_max_size and not self.closed:
@@ -297,8 +297,6 @@ class Main(commands.Cog):
     @on_queue_channel()
     @commands.command(aliases=["queuein"])
     async def queue_in(self, ctx, delay): 
-        q = self.get_delay_in_seconds(delay)
-        print(q, type(q))
         await asyncio.sleep(self.get_delay_in_seconds(delay))
         return await self.queue_up(ctx)
 
@@ -391,6 +389,12 @@ class Main(commands.Cog):
 
             await self.update_queue_post(ctx)
 
+    async def unset_queue_owner(self, ctx):
+        await self.pre_queue_post.edit(content="No password yet")
+        await self.update_queue_post(ctx)
+        await self.find_new_host(ctx)
+        self.owner = None
+
     @on_queue_channel()
     @commands.command(aliases=["l"])
     async def leave(self, ctx):  # name optional
@@ -406,10 +410,7 @@ class Main(commands.Cog):
             if ctx.author.id in self.accepted:
                 self.accepted.remove(ctx.author.id)
         if ctx.author == self.owner:
-            await self.pre_queue_post.edit(content="No password yet")
-            await self.update_queue_post(ctx)
-            await self.find_new_host(ctx)
-            self.owner = None
+            await self.unset_queue_owner(ctx)
         await self.re_open_queue_if_necessary(ctx)
         await self.update_queue_post(ctx)
         await self.update_queue_post(ctx)
@@ -423,23 +424,29 @@ class Main(commands.Cog):
     @on_queue_channel()
     @commands.command()
     async def kick(self, ctx, *, guy: discord.Member):
-        if guy == self.owner:
-            await ctx.send("You can't kick the queue owner!")
-            return
-        if guy.id in self.queue:
-            if ctx.author == self.owner or self.is_admin():
-                await self.do_kick(ctx, guy)
-            else:
-                self.kick_dict[guy.id].add(ctx.author.id)
-                votes = len(self.kick_dict[guy.id])
-                await ctx.send(f"{ctx.author.display_name} has voted to kick {guy.display_name}, current vote count: "
-                               f"{votes}/{self.kick_threshold}")
-
-                if votes == self.kick_threshold:
+        if self.is_admin(ctx):
+            await self.do_kick(ctx, guy)
+            if guy == self.owner:
+                return await self.unset_queue_owner(ctx)
+                
+        else:    
+            if guy == self.owner:
+                await ctx.send("You can't kick the queue owner!")
+                return
+            if guy.id in self.queue:
+                if ctx.author == self.owner:
                     await self.do_kick(ctx, guy)
-            await self.update_queue_post(ctx)
-        else:
-            await ctx.send(f"{ctx.author.mention} you are not on the queue!")
+                else:
+                    self.kick_dict[guy.id].add(ctx.author.id)
+                    votes = len(self.kick_dict[guy.id])
+                    await ctx.send(f"{ctx.author.display_name} has voted to kick {guy.display_name}, current vote count: "
+                                f"{votes}/{self.kick_threshold}")
+
+                    if votes == self.kick_threshold:
+                        await self.do_kick(ctx, guy)
+                await self.update_queue_post(ctx)
+            else:
+                await ctx.send(f"{ctx.author.mention} you are not on the queue!")
         await self.update_queue_post(ctx)
 
     async def do_kick(self, ctx, guy):
