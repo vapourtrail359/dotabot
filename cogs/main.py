@@ -280,7 +280,8 @@ class Main(commands.Cog):
                     await self.update_queue_post(ctx)
                     if len(self.queue) == self.queue_max_size and self.owner is not None:
                         self.closed = True
-                        await self.end_ready_check(0)
+                        if self.ready_check_post:
+                            await self.end_ready_check(0)
                         await self.call_to_accept(ctx)
                         await self.update_queue_post(ctx)
                     elif self.owner is None:
