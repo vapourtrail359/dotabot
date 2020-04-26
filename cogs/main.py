@@ -297,8 +297,11 @@ class Main(commands.Cog):
     @on_queue_channel()
     @commands.command(aliases=["queuein"])
     async def queue_in(self, ctx, delay): 
-        await asyncio.sleep(self.get_delay_in_seconds(delay))
-        return await self.queue_up(ctx)
+        delay = self.get_delay_in_seconds(delay)
+        if delay:
+            await ctx.send(f"{ctx.author.display_name} will !queue in {delay / 60} minutes")
+            await asyncio.sleep(delay)
+            return await self.queue_up(ctx)
 
     def get_delay_in_seconds(self, delay):
         def isDigit(x):
@@ -316,7 +319,7 @@ class Main(commands.Cog):
                 return parse_float("m") * 60
             elif "h" in delay:   
                 return parse_float("h") * 3600
-            return 0
+            return None
 
     async def call_to_accept(self, ctx):
         self.accepted = []
@@ -418,8 +421,12 @@ class Main(commands.Cog):
     @on_queue_channel()
     @commands.command(aliases=["leavein"])
     async def leave_in(self, ctx, delay):
-        await asyncio.sleep(self.get_delay_in_seconds(delay))
-        return await self.leave(ctx)
+        delay = self.get_delay_in_seconds(delay)
+        if delay:
+            await ctx.send(f"{ctx.author.display_name} will !leave in {delay / 60} minutes")
+            await asyncio.sleep(delay)
+            if len(self.queue) != self.queue_max_size:
+                return await self.leave(ctx)
 
     @on_queue_channel()
     @commands.command()
